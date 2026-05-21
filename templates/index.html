@@ -115,6 +115,24 @@
   .analyst-verdict { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 6px; }
   .analyst-suggest { font-size: 12px; color: var(--red); font-weight: 600; }
 
+  /* 大盘卡片 */
+  .market-card { background: var(--card); border-radius: 16px; padding: 16px;
+                 box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 14px; }
+  .market-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
+  .market-indices { display: flex; flex-direction: column; gap: 6px; }
+  .market-idx { display: flex; justify-content: space-between; align-items: center;
+                padding: 6px 10px; border-radius: 8px; background: var(--bg); font-size: 13px; }
+  .idx-name { font-weight: 600; }
+  .idx-price { font-weight: 700; }
+  .idx-up { color: var(--red); }
+  .idx-down { color: var(--green); }
+  .idx-flat { color: var(--text2); }
+  .market-sentiment-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px;
+                           padding: 10px; border-radius: 10px; background: var(--bg); }
+  .sentiment-icon { font-size: 24px; }
+  .sentiment-text { font-size: 14px; font-weight: 700; }
+  .sentiment-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
   /* 龙虎榜 */
   .tiger-card { background: var(--card); border-radius: 14px; padding: 16px;
                  box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 14px; }
@@ -196,6 +214,62 @@ function render(d) {
     '⚪': 'gray', '🟠': 'orange', '🔴': 'red'
   };
 
+  // 大盘指数
+  var marketHtml = '';
+  if (d.market && d.market.indices) {
+    var m = d.market;
+    var sentimentMap = {
+      '🟢 强势上涨': {icon: '📈', desc: '赚钱效应好，积极做多'},
+      '🔵 温和上涨': {icon: '↗', desc: '市场平稳，可精选个股'},
+      '⚪ 震荡整理': {icon: '➡️', desc: '方向不明，控仓观望'},
+      '🟠 温和下跌': {icon: '↘', desc: '市场偏弱，防守为主'},
+      '🔴 恐慌下跌': {icon: '📉', desc: '系统性风险，清仓回避'},
+    };
+    var sInfo = sentimentMap[m.sentiment] || {icon: '⚪', desc: ''};
+    var idxRows = [];
+    var indices = m.indices;
+    if (indices['上证指数'] && indices['上证指数'].price) {
+      var sh = indices['上证指数'];
+      var shUp = sh.change_pct >= 0.1;
+      idxRows.push('<div class="market-idx">' +
+        '<span class="idx-name">上证指数</span>' +
+        '<span class="idx-price ' + (shUp ? 'idx-up' : 'idx-down') + '">' + sh.price + ' ' + (shUp?'+':'') + sh.change_pct + '%</span>' +
+        '</div>');
+    }
+    if (indices['深证成指'] && indices['深证成指'].price) {
+      var sz = indices['深证成指'];
+      var szUp = sz.change_pct >= 0.1;
+      idxRows.push('<div class="market-idx">' +
+        '<span class="idx-name">深证成指</span>' +
+        '<span class="idx-price ' + (szUp ? 'idx-up' : 'idx-down') + '">' + sz.price + ' ' + (szUp?'+':'') + sz.change_pct + '%</span>' +
+        '</div>');
+    }
+    if (indices['创业板指'] && indices['创业板指']) {
+      var cy = indices['创业板指'];
+      if (cy.price) {
+        var cyUp = cy.change_pct >= 0.1;
+        idxRows.push('<div class="market-idx">' +
+          '<span class="idx-name">创业板指</span>' +
+          '<span class="idx-price ' + (cyUp ? 'idx-up' : 'idx-down') + '">' + cy.price + ' ' + (cyUp?'+':'') + cy.change_pct + '%</span>' +
+          '</div>');
+      }
+    }
+    if (idxRows.length > 0) {
+      var sentimentColor = m.level >= 2 ? 'var(--red)' : m.level >= 1 ? '#f39c12' : m.level >= 0 ? '#aaa' : '#27ae60';
+      marketHtml = '<div class="market-card">' +
+        '<div class="market-title">🌏 大盘行情 · 市场情绪</div>' +
+        '<div class="market-indices">' + idxRows.join('') + '</div>' +
+        '<div class="market-sentiment-bar">' +
+          '<span class="sentiment-icon">' + sInfo.icon + '</span>' +
+          '<div>' +
+            '<div class="sentiment-text" style="color:' + sentimentColor + '">' + m.sentiment + '</div>' +
+            '<div class="sentiment-desc">' + sInfo.desc + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+  }
+
   // 信号判断
   var vol = d.signals ? d.signals.vol_ratio : 1;
   var signals = [];
@@ -262,6 +336,8 @@ function render(d) {
   }
 
   el.innerHTML =
+
+    marketHtml +
 
     '<div class="stock-card">' +
       '<div class="stock-name">' + data.name + '</div>' +
